@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>臺灣流域崩塌率變化</title>
+  <style>
+    html, body { margin:0; padding:0; height:100%; background:black; }
+    #container { display:flex; height:100vh; }
+    #cesiumContainer { width:50%; position:relative; }
+    #chartContainer { width:50%; display:flex; align-items:center; justify-content:center; position:relative; }
+    #chartContainer canvas { background:black; }
+    #yearLabel {
+      position: absolute; top: 10px; left: 10px;
+      color: yellow; font-size: 24px;
+      background: rgba(0,0,0,0.5);
+      padding: 4px 10px; border-radius: 5px;
+    }
+    #controls {
+      position: absolute; bottom: 10px; left: 10px;
+    }
+    #controls button {
+      font-size: 16px; padding: 6px 12px; margin-right: 8px;
+    }
+    #mapLegend {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      background: rgba(0,0,0,0.5); color: white;
+      padding: 8px; border-radius: 6px;
+      font-size: 13px; font-family: sans-serif;
+    }
+    .legend-bar {
+      height: 10px; margin: 4px 0; background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,69,0,1));
+    }
+    .legend-labels { display: flex; justify-content: space-between; }
+  </style>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div id="container">
+  <div id="cesiumContainer">
+    <div id="yearLabel">2003</div>
+    <div id="controls">
+      <button id="playBtn">▶ 播放</button>
+      <button id="pauseBtn">⏸ 暫停</button>
+    </div>
+    <div id="mapLegend">
+      <div style="margin-bottom:4px;">崩塌率 (%)</div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels">
+        <span>0</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span>
+      </div>
+      <div style="margin-top:4px; font-size:12px; color: #ccc;">5%~0%透明度遞增至100%</div>
+    </div>
+  </div>
+  <div id="chartContainer">
+    <canvas id="rateChart"></canvas>
+  </div>
+</div>
+
+<script>
+(async function () {
+  const years = Array.from({length: 21}, (_, i) => 2003 + i);
+  const rect = Cesium.Rectangle.fromDegrees(119.8, 21.8, 122.1, 25.5);
+  let currentIndex = 0, playTimer = null, selectedEntity = null, chart = null, currentImageLayer = null;
+
+  Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyZjI0NDZjYS02YjRlLTRkNzQtOTkyMi1lMTllN2U0NTdjOWIiLCJpZCI6Mjg5NDQwLCJpYXQiOjE3NDM0MTExNTl9.YipWOIxM9T1BTJ89miUOM9NUQu8IVYUpE8NPxDzh0r8';
+
+  const viewer = new Cesium.Viewer("cesiumContainer", {
+    baseLayerPicker: false, animation: false, timeline: false,
+    sceneMode: Cesium.SceneMode.SCENE2D,
+    terrainProvider: new Cesium.EllipsoidTerrainProvider()
+  });
+  viewer.scene.backgroundColor = Cesium.Color.BLACK;
+  viewer.camera.setView({ destination: rect });
+  // 關閉預設綠框選取效果
+  viewer.selectedEntityChanged.addEventListener(() => {
+    viewer.selectedEntity = undefined;
+  });
+
+
+  viewer.homeButton.viewModel.command.beforeExecute.addEventListener(function(e){
+    e.cancel = true;
+    viewer.camera.flyTo({ destination: rect });
+  });
+
+  let imageryProvider;
+  try {
+    imageryProvider = await Cesium.IonImageryProvider.fromAssetId(2);
+  } catch (e) {
+    imageryProvider = new Cesium.UrlTemplateImageryProvider({
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+    });
+  }
+  viewer.imageryLayers.addImageryProvider(imageryProvider, 0);
+
+  const yearLabel = document.getElementById("yearLabel");
+  const playBtn = document.getElementById("playBtn");
+  const pauseBtn = document.getElementById("pauseBtn");
+  const ctx = document.getElementById("rateChart").getContext("2d");
+
+  function fadeLayers(oldLayer, newLayer) {
+    let t = 0;
+    function step() {
+      t += 0.05;
+      newLayer.alpha = Math.min(t, 1);
+      if (oldLayer) oldLayer.alpha = Math.max(1 - t, 0);
+      if (t < 1) requestAnimationFrame(step);
+      else if (oldLayer) viewer.imageryLayers.remove(oldLayer, true);
+    }
+    requestAnimationFrame(step);
+  }
+
+  async function updateImage(year) {
+    const newProvider = new Cesium.SingleTileImageryProvider({
+      url: `watershed/rate_${year}.png`, rectangle: rect
+    });
+    const newLayer = viewer.imageryLayers.addImageryProvider(newProvider);
+    newLayer.alpha = 0;
+    await newProvider.readyPromise;
+    fadeLayers(currentImageLayer, newLayer);
+    currentImageLayer = newLayer;
+    yearLabel.textContent = year;
+  }
+
+  const basinEntities = [];
+  const geojson = await (await fetch("basinslope.geojson")).json();
+
+  geojson.features.forEach(f => {
+    const name = f.properties.name;
+    const rates = {};
+    years.forEach(y => rates[y] = parseFloat(f.properties[`rate${y}`]) || 0);
+    const coordsList = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+    coordsList.forEach(coords => {
+      const hierarchy = coords[0].map(([lon, lat]) => Cesium.Cartesian3.fromDegrees(lon, lat));
+      const entity = viewer.entities.add({
+        name, rates,
+        polygon: {
+          hierarchy,
+          material: Cesium.Color.WHITE.withAlpha(0.01)
+        },
+        polyline: {
+          positions: hierarchy,
+          width: 0.5,
+          material: Cesium.Color.WHITE
+        }
+      });
+      basinEntities.push(entity);
+    });
+  });
+
+  selectedEntity = basinEntities.find(e => e.name === "曾文溪流域");
+  if (selectedEntity) {
+    selectedEntity.polygon.material = Cesium.Color.YELLOW.withAlpha(0.5);
+    initChart(selectedEntity);
+  }
+
+  const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+  handler.setInputAction(evt => {
+    const picked = viewer.scene.pick(evt.position);
+    if (picked && basinEntities.includes(picked.id)) {
+      basinEntities.forEach(e => e.polygon.material = Cesium.Color.WHITE.withAlpha(0.01));
+      selectedEntity = picked.id;
+      selectedEntity.polygon.material = Cesium.Color.YELLOW.withAlpha(0.5);
+      initChart(selectedEntity);
+      currentIndex = 0;
+    }
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+  function initChart(ent) {
+    const data = years.map(y => ent.rates[y]);
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: years.map(String),
+        datasets: [{
+          label: `${ent.name} 崩塌率(%)`,
+          data,
+          backgroundColor: years.map((_, i) => i === currentIndex ? "yellow" : "rgba(0, 123, 255, 0.8)" )
+        }]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: "white" }, grid: { display: false } },
+          y: {
+            beginAtZero: true,
+            ticks: { color: "white" },
+            grid: { color: "gray" },
+            title: { display: true, text: "崩塌率(%)", color: "white" }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: "white",
+              font: { size: 16 }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function startPlayback() {
+    if (playTimer) clearInterval(playTimer);
+    playTimer = setInterval(() => {
+      const year = years[currentIndex];
+      updateImage(year);
+      if (chart && selectedEntity) {
+        chart.data.datasets[0].backgroundColor = years.map((_, i) => i === currentIndex ? "yellow" : "rgba(0, 123, 255, 0.8)");
+        chart.update();
+      }
+      currentIndex = (currentIndex + 1) % years.length;
+    }, 500);
+  }
+
+  function pausePlayback() {
+    if (playTimer) clearInterval(playTimer);
+  }
+
+  playBtn.onclick = startPlayback;
+  pauseBtn.onclick = pausePlayback;
+  updateImage(2003);
+  startPlayback();
+})();
+</script>
+</body>
+</html>
