@@ -7,7 +7,7 @@
     html, body { margin:0; padding:0; height:100%; background:black; }
     #container { display:flex; height:100vh; }
     #cesiumContainer { width:50%; position:relative; }
-    #chartContainer { width:50%; display:flex; top: 30px;align-items:center; justify-content:center; position:relative;height:90vh; }
+    #chartContainer { width:48%; display:flex; top: 30px;right: 20px; left:20px; align-items:center; justify-content:center; position:relative;height:90vh; }
     #chartContainer canvas { background:black; }
     #yearLabel {
       position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
@@ -197,16 +197,16 @@
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: "white" }, grid: { display: false },font: { size: 18 } },
+          x: { ticks: { color: "white", font: { size: 20 } }, grid: { display: false },font: { size: 20 } },
           y: {
             beginAtZero: true,
-            ticks: { color: "white" },
+            ticks: { color: "white" , font: { size: 20 }},
             grid: { color: "gray" },
             title: {
               display: true,
               text: "崩塌率(%)",
               color: "white",
-              font: { size: 16 }
+              font: { size: 20 }
             }
 
           }
