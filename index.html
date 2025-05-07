@@ -113,7 +113,7 @@
   function fadeLayers(oldLayer, newLayer) {
     let t = 0;
     function step() {
-      t += 0.05;
+      t += 0.01;
       newLayer.alpha = Math.min(t, 1);
       if (oldLayer) oldLayer.alpha = Math.max(1 - t, 0);
       if (t < 1) requestAnimationFrame(step);
@@ -124,7 +124,8 @@
 
   async function updateImage(year) {
     const newProvider = new Cesium.SingleTileImageryProvider({
-      url: `watershed/rate_${year}.png`, rectangle: rect
+      //url: `watershed/rate_${year}.png`, rectangle: rect
+      url: `watershed/rate_2009.png`, rectangle: rect
     });
     const newLayer = viewer.imageryLayers.addImageryProvider(newProvider);
     newLayer.alpha = 0;
