@@ -113,7 +113,7 @@
   function fadeLayers(oldLayer, newLayer) {
     let t = 0;
     function step() {
-      t += 0;
+      t += 0.01;
       newLayer.alpha = Math.min(t, 1);
       if (oldLayer) oldLayer.alpha = Math.max(1 - t, 0);
       if (t < 1) requestAnimationFrame(step);
