@@ -5,10 +5,10 @@
   <title>臺灣流域崩塌率變化</title>
   <style>
     html, body { margin:0; padding:0; height:100%; background:black; }
-    #container { display:flex; height:100vh; }
-    #cesiumContainer { width:50%; position:relative; }
-    #chartContainer { width:48%; display:flex; top: 30px;right: 20px; left:20px; align-items:center; justify-content:center; position:relative;height:90vh; }
-    #chartContainer canvas { background:black; }
+    #container { display:flex; }
+    #cesiumContainer { width:50%; position:relative; height:75vh; margin: 60px 0 10px;}
+    #chartContainer { width:48%; display:flex; top: 30px;right: 40px; left:20px; align-items:center; justify-content:center; position:relative;height:60vh; margin: 60px 0 60px; }
+    #chartContainer canvas { background:black; padding-bottom:20px;padding:40px}
     #yearLabel {
       position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
       color: white; font-size: 24px;
@@ -27,8 +27,8 @@
     }
     #mapLegend {
   position: absolute;
-  top: 50%;
-  right: 30px;
+  top: 70%;
+  right: 20%;
   transform: translateY(-50%);
   z-index: 10;
   background: rgba(0,0,0,0.5);
@@ -39,9 +39,22 @@
   font-family: sans-serif;
 }
     .legend-bar {
-      height: 10px; margin: 4px 0; background: linear-gradient(to right, rgba(255,255,255,1), rgba(255,69,0,1));
+      width: 12px;
+      height: 160px;
+      background: linear-gradient(to top, rgba(255, 0, 0, 0.52), rgba(255,165,0,1), rgba(255,255,255,1));
+      border: 1px solid #888;
+      margin-right: 6px;
     }
-    .legend-labels { display: flex; justify-content: space-between; }
+
+    .legend-labels {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 160px;
+      margin-left: 6px;
+      font-size: 12px;
+    }
+
   </style>
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet"/>
@@ -55,18 +68,22 @@
       <button id="playBtn">▶ 播放</button>
       <button id="pauseBtn">⏸ 暫停</button>
     </div>
-    <div id="mapLegend">
+    <<div id="mapLegend">
       <div style="margin-bottom:4px;">崩塌率 (%)</div>
-      <div class="legend-bar"></div>
-      <div class="legend-labels">
-        <span>0</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span>
+      <div class="legend-vertical" style="display: flex; flex-direction: row; align-items: center;">
+        <div class="legend-bar"></div>
+        <div class="legend-labels">
+          <span>0</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span>
+        </div>
       </div>
-      <div style="margin-top:4px; font-size:12px; color: #ccc;">5%~0%透明度遞增至100%</div>
     </div>
+    
   </div>
-  <div id="chartContainer">
-    <canvas id="rateChart"></canvas>
+  <div id="chartContainer" style="flex-direction: column;">
+    <div id="chartLegend" style="color: white; font-size: 24px; text-align: center; margin: 40px 0 10px;"></div>
+    <canvas id="rateChart" style="flex: 1;"></canvas>
   </div>
+  
 </div>
 
 <script>
@@ -182,13 +199,14 @@
 
   function initChart(ent) {
     const data = years.map(y => ent.rates[y]);
+    document.getElementById('chartLegend').innerHTML = `${ent.name}<br>崩塌率(%)`;
     if (chart) chart.destroy();
     chart = new Chart(ctx, {
       type: "bar",
       data: {
         labels: years.map(String),
         datasets: [{
-          label: `${ent.name} 崩塌率(%)`,
+          label: [ent.name ,'崩塌率(%)'],
           data,
           backgroundColor: years.map((_, i) => i === currentIndex ? "yellow" : "rgba(0, 123, 255, 0.8)" )
         }]
@@ -198,17 +216,20 @@
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: "white", font: { size: 20 } }, grid: { display: false },font: { size: 20 } },
+          x: { ticks: { color: "white", font: { size: 16 } }, grid: { display: false },font: { size: 16 } },
           y: {
             beginAtZero: true,
-            ticks: { color: "white" , font: { size: 20 }},
-            grid: { color: "gray" },
+            ticks: { color: "white" , font: { size: 16 }},
+            grid: { color: "white" },
             title: {
               display: true,
-              text: "崩塌率(%)",
-              color: "white",
-              font: { size: 20 }
+              text: ['崩塌率(%)'],
+              color: 'white',
+              font: {
+                size: 20,
+              },
             }
+
 
           }
         },
@@ -216,8 +237,9 @@
           legend: {
             labels: {
               color: "white",
-              font: { size: 16 }
-            }
+              font: { size: 16, lineHeight: 1.5 ,}
+              
+            },display: false
           }
         }
       }
