@@ -50,7 +50,7 @@
 <body>
 <div id="container">
   <div id="cesiumContainer">
-    <div id="yearLabel">2003</div>
+    <div id="yearLabel">平均崩塌率</div>
     <div id="controls">
       <button id="playBtn">▶ 播放</button>
       <button id="pauseBtn">⏸ 暫停</button>
@@ -128,11 +128,12 @@
       url: `watershed/rate_2009.png`, rectangle: rect
     });
     const newLayer = viewer.imageryLayers.addImageryProvider(newProvider);
-    newLayer.alpha = 0;
+    //newLayer.alpha = 0;
+    newLayer.alpha = 1;
     await newProvider.readyPromise;
-    fadeLayers(currentImageLayer, newLayer);
+    //fadeLayers(currentImageLayer, newLayer);
     currentImageLayer = newLayer;
-    yearLabel.textContent = year;
+    //yearLabel.textContent = year;
   }
 
   const basinEntities = [];
@@ -227,7 +228,7 @@
     if (playTimer) clearInterval(playTimer);
     playTimer = setInterval(() => {
       const year = years[currentIndex];
-      updateImage(year);
+      //updateImage(year);
       if (chart && selectedEntity) {
         chart.data.datasets[0].backgroundColor = years.map((_, i) => i === currentIndex ? "yellow" : "rgba(0, 123, 255, 0.8)");
         chart.update();
