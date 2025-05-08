@@ -5,9 +5,10 @@
   <title>臺灣流域崩塌率變化</title>
   <style>
     html, body { margin:0; padding:0; height:100%; background:black; }
-    #container { display:flex; }
-    #cesiumContainer { width:50%; position:relative; height:100vh;}
+    #container { display:flex;}
+    #cesiumContainer { width:50%; position:relative; height:95vh;}
     #chartContainer {
+      z-index: 0;
       width: 50%;
       height: 50vh;              /* ✅ 降低整體高度 */
       margin: auto;              /* ✅ 置中 chart 區塊 */
@@ -92,6 +93,7 @@
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
 </head>
 <body>
 <div id="container">
@@ -122,6 +124,7 @@
 
 <script>
 (async function () {
+  Chart.register(window['chartjs-plugin-annotation']);
   const years = Array.from({length: 21}, (_, i) => 2003 + i);
   const rect = Cesium.Rectangle.fromDegrees(119.8, 21.8, 122.1, 25.5);
   let currentIndex = 0, playTimer = null, selectedEntity = null, chart = null, currentImageLayer = null;
@@ -239,6 +242,28 @@
 
   function initChart(ent) {
     const data = years.map(y => ent.rates[y]);
+
+  // ✅ 插入 annotations 註解邏輯
+  const annotations = {};
+  if (ent.name === "曾文溪流域" || ent.name === "高屏溪流域") {
+    const moraYearIndex = years.indexOf(2009);
+    annotations["morakot"] = {
+      type: 'label',
+      xValue: '2009',
+      yValue: data[moraYearIndex],
+      content: ['莫拉克颱風影響'],
+      color: 'white',
+      font: {
+        size: 14,
+        weight: 'bold'
+      },
+      yAdjust: -20,
+      xAdjust: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      textAlign: 'center'
+    };
+  }
+
     document.getElementById('chartLegend').innerHTML = `${ent.name}`;
     document.getElementById('chartSubLegend').innerHTML = `崩塌率 (%)`;
     if (chart) chart.destroy();
@@ -274,6 +299,7 @@
           }
         },
         plugins: {
+          annotation: { annotations: annotations },
           legend: {
             labels: {
               color: "white",
