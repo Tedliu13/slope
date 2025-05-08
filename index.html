@@ -22,16 +22,23 @@
 
     #chartLegend {
       color: white;
-      font-size: 44px;
+      font-size: 40px;
       text-align: center;
-      margin-bottom: 24px;
-      line-height: 1.6;
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+    #chartSubLegend {
+      color: white;
+      font-size: 26px;
+      text-align: center;
+      margin-bottom: 60px;
+      line-height: 1.2;
     }
 
     #chartContainer canvas { background:black;}
     #yearLabel {
       position: absolute;
-      top: 80px;
+      top: 40px;
       left: 50%;
       transform: translateX(-50%);
       color: white;
@@ -106,7 +113,8 @@
     
   </div>
   <div id="chartContainer" style="flex-direction: column;">
-    <div id="chartLegend" style="color: white; font-size: 44px; text-align: center; margin: 40px 0 10px;"></div>
+    <div id="chartLegend"></div>
+    <div id="chartSubLegend"></div>
     <canvas id="rateChart" style="flex: 1;"></canvas>
   </div>
   
@@ -231,7 +239,8 @@
 
   function initChart(ent) {
     const data = years.map(y => ent.rates[y]);
-    document.getElementById('chartLegend').innerHTML = `${ent.name}<br>崩塌率(%)`;
+    document.getElementById('chartLegend').innerHTML = `${ent.name}`;
+    document.getElementById('chartSubLegend').innerHTML = `崩塌率 (%)`;
     if (chart) chart.destroy();
     chart = new Chart(ctx, {
       type: "bar",
