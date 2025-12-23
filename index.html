@@ -222,7 +222,7 @@
     });
   });
 
-  selectedEntity = basinEntities.find(e => e.name === "曾文溪流域");
+  selectedEntity = basinEntities.find(e => e.name === "高屏溪流域");
   if (selectedEntity) {
     selectedEntity.polygon.material = Cesium.Color.YELLOW.withAlpha(0.5);
     initChart(selectedEntity);
